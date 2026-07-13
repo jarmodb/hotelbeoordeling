@@ -12,7 +12,7 @@ interface HotelFormProps {
   onCancel: () => void
 }
 
-function lookupProvincie(entries: HotelEntry[], land: string, stad: string): string | null {
+function lookupProvincieFromHistory(entries: HotelEntry[], land: string, stad: string): string | null {
   const l = land.trim().toLowerCase()
   const s = stad.trim().toLowerCase()
   if (!l || !s) return null
@@ -20,6 +20,16 @@ function lookupProvincie(entries: HotelEntry[], land: string, stad: string): str
     (e) => e.provincie && e.land.trim().toLowerCase() === l && (e.stad ?? '').trim().toLowerCase() === s
   )
   return match?.provincie ?? null
+}
+
+async function lookupProvincieOnline(land: string, stad: string, signal: AbortSignal): Promise<string | null> {
+  const query = encodeURIComponent(`${stad}, ${land}`)
+  const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=jsonv2&addressdetails=1&limit=1`
+  const res = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+  if (!res.ok) return null
+  const results = await res.json()
+  const address = results[0]?.address
+  return address?.state ?? address?.region ?? address?.county ?? null
 }
 
 export function HotelForm({ initial, knownLanden, entries, onSave, onDelete, onCancel }: HotelFormProps) {
@@ -39,11 +49,36 @@ export function HotelForm({ initial, knownLanden, entries, onSave, onDelete, onC
   const [opmerkingen, setOpmerkingen] = useState(initial?.opmerkingen ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [provincieLoading, setProvincieLoading] = useState(false)
 
   useEffect(() => {
     if (!provincieAuto) return
-    const found = lookupProvincie(entries, land, stad)
-    if (found) setProvincie(found)
+
+    const fromHistory = lookupProvincieFromHistory(entries, land, stad)
+    if (fromHistory) {
+      setProvincie(fromHistory)
+      return
+    }
+
+    if (!land.trim() || !stad.trim()) return
+
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setProvincieLoading(true)
+      try {
+        const found = await lookupProvincieOnline(land, stad, controller.signal)
+        if (found) setProvincie(found)
+      } catch {
+        // offline or lookup failed: leave provincie for manual entry
+      } finally {
+        setProvincieLoading(false)
+      }
+    }, 600)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [land, stad, provincieAuto, entries])
 
   async function handleSubmit(e: FormEvent) {
@@ -116,7 +151,7 @@ export function HotelForm({ initial, knownLanden, entries, onSave, onDelete, onC
               setProvincie(e.target.value)
               setProvincieAuto(false)
             }}
-            placeholder="Vult zich automatisch in als bekend"
+            placeholder={provincieLoading ? 'Opzoeken...' : 'Vult zich automatisch in als bekend'}
           />
         </label>
         <label>
@@ -159,12 +194,22 @@ export function HotelForm({ initial, knownLanden, entries, onSave, onDelete, onC
 
       <label>
         Aantal keer geweest
-        <input
-          type="number"
-          min={1}
-          value={aantalKeerGeweest}
-          onChange={(e) => setAantalKeerGeweest(Number(e.target.value))}
-        />
+        <div className="stepper">
+          <input
+            type="number"
+            min={1}
+            value={aantalKeerGeweest}
+            onChange={(e) => setAantalKeerGeweest(Number(e.target.value))}
+          />
+          <button
+            type="button"
+            className="stepper-button"
+            onClick={() => setAantalKeerGeweest((n) => (n || 0) + 1)}
+            aria-label="Aantal keer geweest ophogen"
+          >
+            +1
+          </button>
+        </div>
       </label>
 
       <label>

@@ -193,6 +193,23 @@ main {
   gap: 0.75rem;
 }
 
+.stepper {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.stepper input {
+  flex: 1;
+}
+
+.stepper-button {
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  background: var(--tag-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
 .form-actions {
   display: flex;
   gap: 0.5rem;
