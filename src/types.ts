@@ -11,7 +11,8 @@ export interface HotelEntry {
   badkamer: number | null
   ontbijt: number | null
   bed: number | null
-  datum_geweest: string | null
+  begin_datum: string | null
+  eind_datum: string | null
   aantal_keer_geweest: number | null
   werk_prive: WerkPrive | null
   opmerkingen: string | null

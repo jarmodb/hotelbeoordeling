@@ -35,7 +35,7 @@ function App() {
     const { data, error } = await supabase
       .from('hotel_ratings_entries')
       .select('*')
-      .order('datum_geweest', { ascending: false, nullsFirst: false })
+      .order('begin_datum', { ascending: false, nullsFirst: false })
     if (error) {
       setFetchError(error.message)
     } else {
@@ -106,6 +106,7 @@ function App() {
           <HotelForm
             initial={null}
             knownLanden={landen}
+            entries={entries}
             onSave={handleSave}
             onCancel={() => setView({ name: 'list' })}
           />
@@ -114,6 +115,7 @@ function App() {
           <HotelForm
             initial={view.entry}
             knownLanden={landen}
+            entries={entries}
             onSave={handleSave}
             onDelete={() => handleDelete(view.entry)}
             onCancel={() => setView({ name: 'list' })}

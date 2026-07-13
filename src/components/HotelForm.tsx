@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { HotelEntry, HotelEntryInput, WerkPrive } from '../types'
 import { StarRating } from './StarRating'
@@ -6,26 +6,45 @@ import { StarRating } from './StarRating'
 interface HotelFormProps {
   initial: HotelEntry | null
   knownLanden: string[]
+  entries: HotelEntry[]
   onSave: (input: HotelEntryInput) => Promise<void>
   onDelete?: () => Promise<void>
   onCancel: () => void
 }
 
-export function HotelForm({ initial, knownLanden, onSave, onDelete, onCancel }: HotelFormProps) {
+function lookupProvincie(entries: HotelEntry[], land: string, stad: string): string | null {
+  const l = land.trim().toLowerCase()
+  const s = stad.trim().toLowerCase()
+  if (!l || !s) return null
+  const match = entries.find(
+    (e) => e.provincie && e.land.trim().toLowerCase() === l && (e.stad ?? '').trim().toLowerCase() === s
+  )
+  return match?.provincie ?? null
+}
+
+export function HotelForm({ initial, knownLanden, entries, onSave, onDelete, onCancel }: HotelFormProps) {
   const [land, setLand] = useState(initial?.land ?? '')
   const [provincie, setProvincie] = useState(initial?.provincie ?? '')
+  const [provincieAuto, setProvincieAuto] = useState(!initial?.provincie)
   const [stad, setStad] = useState(initial?.stad ?? '')
   const [hotelnaam, setHotelnaam] = useState(initial?.hotelnaam ?? '')
   const [hygiene, setHygiene] = useState<number | null>(initial?.hygiene ?? null)
   const [badkamer, setBadkamer] = useState<number | null>(initial?.badkamer ?? null)
   const [ontbijt, setOntbijt] = useState<number | null>(initial?.ontbijt ?? null)
   const [bed, setBed] = useState<number | null>(initial?.bed ?? null)
-  const [datumGeweest, setDatumGeweest] = useState(initial?.datum_geweest ?? '')
+  const [beginDatum, setBeginDatum] = useState(initial?.begin_datum ?? '')
+  const [eindDatum, setEindDatum] = useState(initial?.eind_datum ?? '')
   const [aantalKeerGeweest, setAantalKeerGeweest] = useState(initial?.aantal_keer_geweest ?? 1)
   const [werkPrive, setWerkPrive] = useState<WerkPrive | ''>(initial?.werk_prive ?? '')
   const [opmerkingen, setOpmerkingen] = useState(initial?.opmerkingen ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!provincieAuto) return
+    const found = lookupProvincie(entries, land, stad)
+    if (found) setProvincie(found)
+  }, [land, stad, provincieAuto, entries])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -45,7 +64,8 @@ export function HotelForm({ initial, knownLanden, onSave, onDelete, onCancel }: 
         badkamer,
         ontbijt,
         bed,
-        datum_geweest: datumGeweest || null,
+        begin_datum: beginDatum || null,
+        eind_datum: eindDatum || null,
         aantal_keer_geweest: aantalKeerGeweest || null,
         werk_prive: werkPrive || null,
         opmerkingen: opmerkingen.trim() || null,
@@ -90,7 +110,14 @@ export function HotelForm({ initial, knownLanden, onSave, onDelete, onCancel }: 
       <div className="form-row">
         <label>
           Provincie
-          <input value={provincie} onChange={(e) => setProvincie(e.target.value)} />
+          <input
+            value={provincie}
+            onChange={(e) => {
+              setProvincie(e.target.value)
+              setProvincieAuto(false)
+            }}
+            placeholder="Vult zich automatisch in als bekend"
+          />
         </label>
         <label>
           Stad
@@ -112,23 +139,33 @@ export function HotelForm({ initial, knownLanden, onSave, onDelete, onCancel }: 
 
       <div className="form-row">
         <label>
-          Datum geweest
+          Begin datum
           <input
             type="date"
-            value={datumGeweest}
-            onChange={(e) => setDatumGeweest(e.target.value)}
+            value={beginDatum}
+            onChange={(e) => setBeginDatum(e.target.value)}
           />
         </label>
         <label>
-          Aantal keer geweest
+          Eind datum
           <input
-            type="number"
-            min={1}
-            value={aantalKeerGeweest}
-            onChange={(e) => setAantalKeerGeweest(Number(e.target.value))}
+            type="date"
+            value={eindDatum}
+            min={beginDatum || undefined}
+            onChange={(e) => setEindDatum(e.target.value)}
           />
         </label>
       </div>
+
+      <label>
+        Aantal keer geweest
+        <input
+          type="number"
+          min={1}
+          value={aantalKeerGeweest}
+          onChange={(e) => setAantalKeerGeweest(Number(e.target.value))}
+        />
+      </label>
 
       <label>
         Werk / prive

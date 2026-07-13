@@ -20,6 +20,13 @@ function formatDate(date: string | null): string {
   return new Date(date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function formatDateRange(entry: HotelEntry): string {
+  const begin = formatDate(entry.begin_datum)
+  const eind = formatDate(entry.eind_datum)
+  if (begin && eind && begin !== eind) return `${begin} - ${eind}`
+  return begin || eind
+}
+
 export function HotelList({ entries, onSelect, onAddNew }: HotelListProps) {
   const [search, setSearch] = useState('')
   const [land, setLand] = useState('alle')
@@ -40,7 +47,7 @@ export function HotelList({ entries, onSelect, onAddNew }: HotelListProps) {
           (e.stad ?? '').toLowerCase().includes(q) ||
           (e.provincie ?? '').toLowerCase().includes(q)
       )
-      .sort((a, b) => (b.datum_geweest ?? '').localeCompare(a.datum_geweest ?? ''))
+      .sort((a, b) => (b.begin_datum ?? '').localeCompare(a.begin_datum ?? ''))
   }, [entries, search, land])
 
   return (
@@ -81,7 +88,7 @@ export function HotelList({ entries, onSelect, onAddNew }: HotelListProps) {
                 {avg != null && <span className="avg-badge">{avg.toFixed(1)}★</span>}
               </div>
               <div className="hotel-card-meta">
-                {entry.datum_geweest && <span>{formatDate(entry.datum_geweest)}</span>}
+                {(entry.begin_datum || entry.eind_datum) && <span>{formatDateRange(entry)}</span>}
                 {entry.werk_prive && <span className={`tag tag-${entry.werk_prive}`}>{entry.werk_prive}</span>}
                 {entry.aantal_keer_geweest && entry.aantal_keer_geweest > 1 && (
                   <span>{entry.aantal_keer_geweest}x geweest</span>
